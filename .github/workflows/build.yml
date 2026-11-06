@@ -24,7 +24,7 @@ jobs:
       - name: Build Project
         run: npm run build
 
-      # Zip contents are at the root (index.html at top), as itch.io requires
+      # GitHub zips this automatically; index.html lands at the zip root, ready for itch.io
       - name: Upload Zip for Itch.io
         uses: actions/upload-artifact@v4
         with:
