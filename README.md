@@ -18,3 +18,11 @@ Built with Three.js (pinned r160) + Vite. Targets WebGL, works down to Chrome 10
 - Built the **Black Eye** title screen: dark 3D "eye" background, pulsing **ENTER** button (click or Enter key), fade to black, and audio unlock for later scenes.
 - Added the empty UI layers (dialogue box, "Press E" prompt, HUD arrow, warning text, fade) and the game flags (`helpedDren`, `apologizedToDren`, `kidsFound`, `reachedConsole`, `openedCard`).
 - Next: Scene 1 (The Execution) with movement, mouse look, NPCs and dialogue.
+
+### 06 November 2026 (later)
+- Built **Scene 1, part 1: The Execution** (Earth, Maliana), set in a futuristic city: lit skyline, holographic MALIANA banner, flying cars, a stage and a crowd of about 90 humans.
+- Cutscene: the crowd laughs at the old pioneer (Roy's father), Gathen steps up, strikes him down with an energy blade (sparks, flash, parts fall apart, no gore), then laughs: "You got a body, doesn't mean you can match us!" and the crowd laughs with him.
+- Subtitles: small text at bottom centre, one line at a time, coloured character name (Gathen is yellow) with white dialogue.
+- Voice via the browser's built-in speech (V toggles it, Space skips a line) and simple generated sound effects (city hum, crowd, charge, zap).
+- All models are placeholder boxes and capsules, to be swapped for real models later. R replays the scene.
+- Next: walking control, the 3-4 NPC conversations, and the push on Dren.
