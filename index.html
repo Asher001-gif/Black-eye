@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arin - 3D Browser Game</title>
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HUD / UI layers (empty for now, filled in by later steps) -->
+  <div id="hud">
+    <div id="prompt" class="hidden">Press E</div>
+    <div id="arrow" class="hidden"></div>
+    <div id="warning" class="hidden"></div>
+  </div>
+  <div id="dialogue" class="hidden">
+    <div id="speaker"></div>
+    <div id="line"></div>
+    <div id="choices"></div>
+  </div>
+  <div id="fade"></div>
+  <div id="status">Setup OK. Loading...</div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
