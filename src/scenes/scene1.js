@@ -376,6 +376,7 @@ export function createScene1(ctx) {
   async function run() {
     cut(V(0, 40, 48), V(0, 3, 0));
     audio.setCrowd(0.12);
+    await ui.showCard('20 YEARS AGO...', tl, 3.5);
     ui.setFade(false, 3);
     ui.showLocation('EARTH  \u00b7  MALIANA', tl, 4);
 
@@ -426,7 +427,7 @@ export function createScene1(ctx) {
     audio.setCrowd(0);
     await tl.wait(2.2);
     gathenLaughing = false;
-    ui.showEnd('END OF PART 1  \u00b7  Press R to replay');
+    ui.showEnd('<b>R</b> Replay &nbsp;&nbsp;&nbsp;&nbsp; <b>E</b> Next');
     if (onEnd) onEnd();
   }
 

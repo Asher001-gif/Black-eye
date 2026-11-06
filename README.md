@@ -26,3 +26,7 @@ Built with Three.js (pinned r160) + Vite. Targets WebGL, works down to Chrome 10
 - Voice via the browser's built-in speech (V toggles it, Space skips a line) and simple generated sound effects (city hum, crowd, charge, zap).
 - All models are placeholder boxes and capsules, to be swapped for real models later. R replays the scene.
 - Next: walking control, the 3-4 NPC conversations, and the push on Dren.
+
+### 06 November 2026 (update)
+- Scene 1 now opens on a black screen with a "20 YEARS AGO..." card, then fades into Maliana.
+- At the end the screen closes to black and shows two prompts: **R** to replay and **E** for the next scene (Scene 2 is a "coming soon" placeholder for now).

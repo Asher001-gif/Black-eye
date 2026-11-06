@@ -109,6 +109,12 @@ function startGame() {
   }, 1000);
 }
 
+function nextScene() {
+  if (state !== 'ended') return;
+  // Scene 2 (The Apology) is not built yet
+  ui.showEnd('Scene 2: The Apology \u2014 coming soon &nbsp;&nbsp;&nbsp;&nbsp; <b>R</b> Replay');
+}
+
 function restart() {
   if (state !== 'ended') return;
   voice.cancel();
@@ -123,5 +129,6 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === ' ' && state === 'playing') { e.preventDefault(); ui.skipLine(); }
   else if (e.key === 'v' || e.key === 'V') { voice.toggle(); hint(); }
   else if (e.key === 'r' || e.key === 'R') restart();
+  else if (e.key === 'e' || e.key === 'E') nextScene();
 });
 enterBtn.focus();

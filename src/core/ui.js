@@ -53,6 +53,15 @@ export async function showLocation(text, tl, hold) {
   el.classList.remove('show');
 }
 
+export async function showCard(text, tl, hold) {
+  const el = $('card');
+  el.textContent = text;
+  el.classList.add('show');
+  await tl.wait(hold || 3);
+  el.classList.remove('show');
+  await tl.wait(1.4);
+}
+
 export function setHint(text) { $('status').textContent = text; }
-export function showEnd(text) { const e = $('end'); e.textContent = text; e.classList.add('show'); }
+export function showEnd(html) { const e = $('end'); e.innerHTML = html; e.classList.add('show'); }
 export function hideEnd() { $('end').classList.remove('show'); }
