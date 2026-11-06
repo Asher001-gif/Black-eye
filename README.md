@@ -15,5 +15,3 @@ Built with Three.js (pinned r160) + Vite. Targets WebGL, works down to Chrome 10
 3. On itch.io, upload that zip, tick "This file will be played in the browser".
    `index.html` must be at the zip root.
 
-## GitHub Pages (optional)
-Repo Settings -> Pages -> Source: GitHub Actions.
