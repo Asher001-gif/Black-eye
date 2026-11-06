@@ -1,4 +1,4 @@
-# Arin (3D browser game)
+# Black Eye (3D browser game)
 
 Built with Three.js (pinned r160) + Vite. Targets WebGL, works down to Chrome 109.
 
