@@ -206,7 +206,10 @@ export function createScene1(ctx) {
   // ---------- Fedreck Gathen (posed bone by bone) ----------
   const gathen = new THREE.Group();
   gathen.position.set(1.45, STAGE_Y, -0.5);
-  gathen.rotation.y = -Math.PI / 2 - 0.3; // faces the robot
+  const FACE_YAW = -Math.PI / 2 + 0.3; // faces the robot (robot is at the origin)
+  gathen.rotation.y = FACE_YAW;
+  const GFWD = new THREE.Vector3(Math.sin(FACE_YAW), 0, Math.cos(FACE_YAW));   // where he faces
+  const GLEFT = new THREE.Vector3(Math.cos(FACE_YAW), 0, -Math.sin(FACE_YAW)); // his left
   scene.add(gathen);
   let gathenModel = null;
   let GRIP = {};
@@ -214,36 +217,72 @@ export function createScene1(ctx) {
     .then((j) => { gathenModel = j; GRIP = j.GRIP; gathen.add(j.root); })
     .catch((err) => console.error('Could not load Gathen model', err));
 
-  // Poses in degrees, see src/characters/gathen.js for the axes
+  // Poses in degrees, see src/characters/gathen.js for the axes.
+  // The model's rest pose is an A-pose (arms ~50deg out). On the RIGHT arm +Z brings it in toward
+  // the body, on the LEFT arm -Z does. ~25deg of that = arm hanging nearly straight, a little out.
+  // He is a disciplined commander: upright, chest out, chin up, sword held at the ready, left arm
+  // calm at his side (it never swings out any more, that was the T-pose).
   const IDLE = {
-    Head: [-4, 0, 0], Spine2: [-3, 0, 0],
-    RightArm: [-12, 0, 0], RightForeArm: [-30, 0, 0],
-    LeftArm: [0, 0, 8]
+    Head: [-3, 0, 0], Spine1: [-1, 0, 0], Spine2: [-3, 0, 0],
+    RightArm: [-8, 0, 26], RightForeArm: [-40, 0, 0],
+    LeftArm: [0, 0, -24], LeftForeArm: [-12, 0, 0]
   };
-  const RAISE = { // sword up over the shoulder
-    Hips: [0, -8, 0], Spine1: [-8, -18, 0], Spine2: [-8, -18, 0],
-    Head: [-8, 6, 0],
+  const RAISE = { // sword up over the shoulder, left arm stays tight at his side
+    Hips: [0, -5, 0], Spine1: [-6, -12, 0], Spine2: [-6, -12, 0],
+    Head: [-6, 4, 0],
     RightArm: [-165, 0, 0], RightForeArm: [25, 0, 0],
-    LeftArm: [0, 0, 45], LeftForeArm: [-20, 0, 0]
+    LeftArm: [0, 0, -30], LeftForeArm: [-20, 0, 0]
   };
-  const SLASH = { // chop forward through the robot
-    Hips: [0, 12, 0], Spine1: [14, 22, 0], Spine2: [10, 20, 0],
-    Head: [14, -10, 0],
+  const SLASH = { // chop forward through the robot (body twist trimmed now he faces the robot)
+    Hips: [0, 4, 0], Spine1: [14, 8, 0], Spine2: [10, 8, 0],
+    Head: [14, -4, 0],
     RightArm: [-70, 0, 0], RightForeArm: [-5, 0, 0],
-    LeftArm: [20, 0, 30]
+    LeftArm: [-18, 0, -36], LeftForeArm: [-15, 0, 0] // leaning torso, so the arm is tilted back to stay hanging
   };
   const sw = { raise: 0, slash: 0 };
+  // performance layers on top of the strike poses
+  //   look  : head down, reading the wreck       turn : head/shoulders turn to address the crowd
+  //   speak : talking cadence (nods, chest up)   jab  : hard emphasis nod on a key word
+  //   laugh : cold, controlled chuckle
+  const gs = { look: 0, turn: 0, speak: 0, speakEnv: 0, jab: 0, laugh: 0 };
 
-  function updateGathen() {
+  function updateGathen(dt) {
     if (!gathenModel) return;
+    gs.speakEnv += (gs.speak - gs.speakEnv) * Math.min(1, dt * 9);
     let p = poseMix(poseMix(IDLE, RAISE, sw.raise), SLASH, sw.slash);
     p = poseAdd(p, GRIP);
-    p = poseAdd(p, { Spine2: [Math.sin(t * 1.5) * 1.2, 0, 0] });
-    if (gathenLaughing) {
-      const s = Math.sin(t * 14);
-      p = poseAdd(p, { Head: [-22 + s * 5, 0, 0], Spine1: [-6 + s * 2, 0, 0], Spine2: [s * 2.5, 0, 0] });
-      gathen.position.y = STAGE_Y + Math.abs(s) * 0.05;
-    } else gathen.position.y = STAGE_Y;
+    p = poseAdd(p, { Spine2: [Math.sin(t * 1.2) * 0.8, 0, 0] }); // slow, steady breathing
+
+    // reading the wreck, then lifting his chin and turning to the crowd
+    p = poseAdd(p, {
+      Head: [16 * gs.look - 2 * gs.turn, 24 * gs.turn, 0],
+      Spine1: [4 * gs.look, 5 * gs.turn, 0],
+      Spine2: [2 * gs.look, 6 * gs.turn, 0]
+    });
+
+    // talking: no jaw in this model, so he talks with the head, neck and chest instead:
+    // a dip on each syllable, a slow steady scan, chest up, plus a hard jab on the key word
+    const e = gs.speakEnv;
+    if (e > 0.01) {
+      const syl = Math.pow(Math.abs(Math.sin(t * 4.4 + Math.sin(t * 1.7) * 1.5)), 1.5);
+      p = poseAdd(p, {
+        Head: [syl * 3.2 * e - 2 * e, Math.sin(t * 1.9) * 2.5 * e, Math.sin(t * 2.7) * 1.2 * e],
+        Spine2: [-2 * e + syl * 0.8 * e, 0, 0]
+      });
+    }
+    if (gs.jab > 0.001) p = poseAdd(p, { Head: [9 * gs.jab, 0, 0], Spine1: [5 * gs.jab, 0, 0], Spine2: [3 * gs.jab, 0, 0] });
+
+    // cold chuckle: chin up, little controlled bursts, no hopping
+    if (gs.laugh > 0.01) {
+      const burst = Math.max(0, Math.sin(t * 2.6));
+      const s = Math.sin(t * 10) * burst;
+      p = poseAdd(p, {
+        Head: [-9 * gs.laugh + s * 2.2 * gs.laugh, 0, 0],
+        Spine1: [-2 * gs.laugh + s * 1.0 * gs.laugh, 0, 0],
+        Spine2: [s * 1.4 * gs.laugh, 0, 0]
+      });
+    }
+    gathen.position.y = STAGE_Y;
     gathenModel.setPose(p);
     gathenModel.root.position.z = 0.25 * sw.slash; // small lunge into the strike
   }
@@ -309,15 +348,62 @@ export function createScene1(ctx) {
   const base = new THREE.Vector3(0, 40, 48), look = new THREE.Vector3(0, 3, 0);
   let shake = 0;
   camera.fov = 55; camera.near = 0.1; camera.far = 400; camera.updateProjectionMatrix();
-  function camMove(p, l, dur, ease) {
-    const p0 = base.clone(), l0 = look.clone();
-    return tl.tween(dur, (k) => { base.lerpVectors(p0, p, k); look.lerpVectors(l0, l, k); }, ease || easeInOut);
+  function setFov(f) { if (camera.fov !== f) { camera.fov = f; camera.updateProjectionMatrix(); } }
+  // A "shot" is a camera that is recomputed every frame from his head position, so close-ups
+  // stay locked on his face while he talks. shot.st = seconds since the shot started.
+  let shot = null;
+  function setShot(fn) { shot = { st: 0, fn }; }
+  function clearShot() { shot = null; }
+  const _fc = new THREE.Vector3();
+  function faceCenter(out) { // middle of his face, in world space
+    gathenModel.bones.Head.node.getWorldPosition(out);
+    out.y += 0.14; out.addScaledVector(GFWD, 0.08);
+    return out;
   }
-  function cut(p, l) { base.copy(p); look.copy(l); }
+  const clamp01 = (x) => Math.max(0, Math.min(1, x));
+  const SHOTS = {
+    // low hero angle: he stands tall over the wreckage
+    hero: (st) => {
+      setFov(48); faceCenter(look);
+      const d = 2.4 - 0.25 * clamp01(st / 4);
+      base.set(gathen.position.x + GFWD.x * d + GLEFT.x * 0.9, STAGE_Y + 0.45, gathen.position.z + GFWD.z * d + GLEFT.z * 0.9);
+      look.y -= 0.5;
+    },
+    // tight on his face from the front, slow push in
+    faceFront: (st) => {
+      setFov(30); faceCenter(look);
+      const d = 0.95 - 0.15 * clamp01(st / 2);
+      base.copy(look).addScaledVector(GFWD, d).addScaledVector(GLEFT, 0.14); base.y -= 0.05;
+    },
+    // side profile from his left, shows the jaw and chin work
+    faceSide: (st) => {
+      setFov(30); faceCenter(look);
+      base.copy(look).addScaledVector(GLEFT, 0.95 - 0.08 * clamp01(st / 2)).addScaledVector(GFWD, 0.15);
+      look.addScaledVector(GFWD, 0.04);
+    },
+    // extreme close-up for the last word
+    faceTight: (st) => {
+      setFov(26); faceCenter(look);
+      const d = 0.8 - 0.12 * clamp01(st / 1.5);
+      base.copy(look).addScaledVector(GFWD, d).addScaledVector(GLEFT, -0.08); base.y -= 0.03;
+    },
+    // slow push on the cold laugh, from low three-quarter
+    laugh: (st) => {
+      setFov(40); faceCenter(look);
+      const d = 1.8 - 0.5 * clamp01(st / 5);
+      base.copy(look).addScaledVector(GFWD, d).addScaledVector(GLEFT, 0.5); base.y -= 0.25;
+    }
+  };
+  function camMove(p, l, dur, ease) {
+    clearShot();
+    const p0 = base.clone(), l0 = look.clone(), f0 = camera.fov;
+    return tl.tween(dur, (k) => { base.lerpVectors(p0, p, k); look.lerpVectors(l0, l, k); setFov(lerp(f0, 55, k)); }, ease || easeInOut);
+  }
+  function cut(p, l) { clearShot(); setFov(55); base.copy(p); look.copy(l); }
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
   // ---------- state flags for animation ----------
-  let gathenLaughing = false, struck = false, alert = 0;
+  let struck = false, alert = 0;
 
   function update(dt) {
     if (!alive) return;
@@ -335,7 +421,8 @@ export function createScene1(ctx) {
     bannerMat.opacity = 0.85 + Math.sin(t * 3) * 0.1;
     if (!struck) eyeMat.color.setHex(Math.sin(t * 2) > 0 ? 0xffb000 : 0xcc8800);
     if (!struck) rHead.rotation.x = 0.12 + Math.sin(t * 0.8) * 0.02; // head hangs low
-    updateGathen();
+    updateGathen(dt);
+    if (shot) { shot.st += dt; shot.fn(shot.st); } // tracked shots follow his face (after his pose is set)
     if (alert > 0) {
       alert -= dt;
       redLight.intensity = alert > 0 ? (Math.sin(t * 40) > 0 ? 3 : 0.5) : 0;
@@ -353,6 +440,12 @@ export function createScene1(ctx) {
 
   // ---------- the cutscene ----------
   const say = (who, text) => ui.say(who, text, tl);
+  // a Gathen line: subtitle + voice, with his talking cadence on while it plays
+  async function gsay(text) {
+    gs.speak = 1;
+    await say(GATHEN, text);
+    gs.speak = 0;
+  }
 
   async function strike() {
     if (gathenModel) gathenModel.setBladeGlow(true);
@@ -405,28 +498,58 @@ export function createScene1(ctx) {
     cut(V(-0.6, 2.2, 6), V(0.7, 1.7, 0));
     laughTarget = 0.25; audio.setCrowd(0.12);
     camMove(V(-0.2, 2.2, 5), V(0.7, 1.7, 0), 6, easeInOut);
-    await say(GATHEN, 'Quiet. Let them look at him.');
-    await say(GATHEN, 'Roy\u2019s father. The first of the machine-bodied.');
+    await gsay('Quiet. Let them look at him.');
+    await gsay('Roy\u2019s father. The first of the machine-bodied.');
 
     cut(V(0.2, 2.9, 2.7), V(1.45, 2.6, -0.5));
     camMove(V(0.5, 2.8, 2.5), V(1.45, 2.6, -0.5), 5, easeInOut);
-    await say(GATHEN, 'Once he led them. Now he kneels in Maliana.');
+    await gsay('Once he led them. Now he kneels in Maliana.');
     laughTarget = 0.7; audio.setCrowd(0.3);
     await say(CROWD, 'Finish him! Finish him!');
-    await say(GATHEN, 'As you wish.');
+    await gsay('As you wish.');
 
     // the strike
     cut(V(0.2, 2.4, 4.6), V(0.2, 2.0, 0));
     camMove(V(0.25, 2.3, 4.0), V(0.2, 2.0, 0), 3, easeInOut);
     laughTarget = 0.1; audio.setCrowd(0.06);
     await strike();
-    await tl.wait(1.8);
 
-    // Gathen laughs
-    cut(V(0.8, 1.5, 2.8), V(1.45, 2.5, -0.5));
-    gathenLaughing = true;
-    camMove(V(0.9, 1.6, 2.4), V(1.45, 2.55, -0.5), 5, easeInOut);
-    await say(GATHEN, 'You got a body, doesn\u2019t mean you can match us!');
+    // the silent beat: he holds the follow-through, reads the wreck, then lifts his chin and
+    // turns to the crowd. Low hero angle so he looks like the one in command.
+    if (gathenModel) {
+      setShot(SHOTS.hero);
+      await tl.tween(0.4, (k) => { gs.look = k; }, easeOut);
+      await tl.wait(1.0);
+      await tl.tween(1.0, (k) => { gs.look = 1 - k; gs.turn = k; }, easeInOut);
+      await tl.wait(0.3);
+    } else await tl.wait(1.8);
+
+    // "You got a body, doesn't mean you can match us!" in four angles, cutting on the words:
+    // front close-up, side profile, back to front (tighter) for the hard last word.
+    const LINE = 'You got a body, doesn\u2019t mean you can match us!';
+    const est = 1.3 + LINE.length * 0.055; // same estimate ui.say uses for its minimum length
+    let lineDone = false;
+    const lineP = gsay(LINE).then(() => { lineDone = true; });
+    if (gathenModel) {
+      (async () => {
+        setShot(SHOTS.faceFront);                      // "You got a body,"
+        await tl.wait(est * 0.32); if (lineDone) return;
+        setShot(SHOTS.faceSide);                       // "doesn't mean you can"
+        await tl.wait(est * 0.34); if (lineDone) return;
+        setShot(SHOTS.faceTight);                      // "match us!"
+        await tl.wait(est * 0.18); if (lineDone) return;
+        gs.jab = 1;                                    // hard nod on the last word
+        tl.tween(0.5, (k) => { gs.jab = 1 - k; }, easeOut);
+      })();
+    } else {
+      cut(V(0.8, 1.5, 2.8), V(1.45, 2.5, -0.5));
+      camMove(V(0.9, 1.6, 2.4), V(1.45, 2.55, -0.5), 5, easeInOut);
+    }
+    await lineP;
+
+    // then, and only then, he laughs: a cold, controlled chuckle, not a wild one
+    if (gathenModel) setShot(SHOTS.laugh);
+    tl.tween(0.6, (k) => { gs.laugh = k; }, easeInOut);
     laughTarget = 1; audio.setCrowd(0.5);
     await say(CROWD, 'Ha ha ha ha ha!');
 
@@ -436,7 +559,7 @@ export function createScene1(ctx) {
     ui.setFade(true, 2);
     audio.setCrowd(0);
     await tl.wait(2.2);
-    gathenLaughing = false;
+    gs.laugh = 0;
     ui.showEnd('<b>R</b> Replay &nbsp;&nbsp;&nbsp;&nbsp; <b>E</b> Next');
     if (onEnd) onEnd();
   }
