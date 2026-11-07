@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
-import jackUrl from '../assets/jack.fbx?url';
+import gathenUrl from '../assets/gathen.fbx?url';
 
-// Jack = the model used for Gathen. Mixamo skeleton, faces +Z, right hand on the -X side.
+// Fedreck Gathen's model. Mixamo skeleton, faces +Z, right hand on the -X side.
 // The FBX only holds a one-frame T-pose clip, so all movement is done by posing bones in code.
 //
 // Poses are plain objects: { RightArm: [x, y, z], ... } in DEGREES.
@@ -37,15 +37,15 @@ export function poseAdd(a, b) {
   return out;
 }
 
-export function loadJack({ height = 2.0 } = {}) {
+export function loadGathen({ height = 2.0 } = {}) {
   return new Promise((resolve, reject) => {
-    new FBXLoader().load(jackUrl, (fbx) => {
-      try { resolve(buildJack(fbx, height)); } catch (err) { reject(err); }
+    new FBXLoader().load(gathenUrl, (fbx) => {
+      try { resolve(buildGathen(fbx, height)); } catch (err) { reject(err); }
     }, undefined, reject);
   });
 }
 
-function buildJack(fbx, height) {
+function buildGathen(fbx, height) {
   const root = new THREE.Group(); // put this in the scene
   root.add(fbx);
   root.updateMatrixWorld(true);
@@ -67,7 +67,7 @@ function buildJack(fbx, height) {
     }
   });
   for (const k of ['Hips', 'Spine1', 'Spine2', 'Head', 'RightArm', 'RightForeArm', 'RightHand']) {
-    if (!B[k]) throw new Error('Jack: missing bone ' + k);
+    if (!B[k]) throw new Error('Gathen model: missing bone ' + k);
   }
 
   // scale so the head top is `height` tall (the file is in millimetres)

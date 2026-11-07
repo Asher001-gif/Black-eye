@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { Timeline, lerp, easeIn, easeOut, easeInOut } from '../core/timeline.js';
-import { loadJack, poseMix, poseAdd } from '../characters/jack.js';
+import { loadGathen, poseMix, poseAdd } from '../characters/gathen.js';
 
 // ---- Characters (edit names, colours and voices here) ----
-const GATHEN = { name: 'Gathen', color: '#ffd23f', voice: { pitch: 0.5, rate: 0.85 } };
+const GATHEN = { name: 'Fedreck Gathen', color: '#ffd23f', voice: { pitch: 0.5, rate: 0.85 } };
 const CROWD = { name: 'Crowd', color: '#8fd3ff', voice: { pitch: 1.3, rate: 1.1 } };
 
 const STAGE_Y = 0.8;
@@ -203,18 +203,18 @@ export function createScene1(ctx) {
   collar.rotation.x = Math.PI / 2;
   const robotParts = [rPelvis, rTorso, rHead, rArmL, rArmR, rLegL, rLegR, collar];
 
-  // ---------- Gathen (Jack model, posed bone by bone) ----------
+  // ---------- Fedreck Gathen (posed bone by bone) ----------
   const gathen = new THREE.Group();
   gathen.position.set(1.45, STAGE_Y, -0.5);
   gathen.rotation.y = -Math.PI / 2 - 0.3; // faces the robot
   scene.add(gathen);
-  let jack = null;
+  let gathenModel = null;
   let GRIP = {};
-  const jackReady = loadJack({ height: 2.0 })
-    .then((j) => { jack = j; GRIP = j.GRIP; gathen.add(j.root); })
-    .catch((err) => console.error('Could not load Jack (Gathen)', err));
+  const gathenReady = loadGathen({ height: 2.0 })
+    .then((j) => { gathenModel = j; GRIP = j.GRIP; gathen.add(j.root); })
+    .catch((err) => console.error('Could not load Gathen model', err));
 
-  // Poses in degrees, see src/characters/jack.js for the axes
+  // Poses in degrees, see src/characters/gathen.js for the axes
   const IDLE = {
     Head: [-4, 0, 0], Spine2: [-3, 0, 0],
     RightArm: [-12, 0, 0], RightForeArm: [-30, 0, 0],
@@ -235,7 +235,7 @@ export function createScene1(ctx) {
   const sw = { raise: 0, slash: 0 };
 
   function updateGathen() {
-    if (!jack) return;
+    if (!gathenModel) return;
     let p = poseMix(poseMix(IDLE, RAISE, sw.raise), SLASH, sw.slash);
     p = poseAdd(p, GRIP);
     p = poseAdd(p, { Spine2: [Math.sin(t * 1.5) * 1.2, 0, 0] });
@@ -244,8 +244,8 @@ export function createScene1(ctx) {
       p = poseAdd(p, { Head: [-22 + s * 5, 0, 0], Spine1: [-6 + s * 2, 0, 0], Spine2: [s * 2.5, 0, 0] });
       gathen.position.y = STAGE_Y + Math.abs(s) * 0.05;
     } else gathen.position.y = STAGE_Y;
-    jack.setPose(p);
-    jack.root.position.z = 0.25 * sw.slash; // small lunge into the strike
+    gathenModel.setPose(p);
+    gathenModel.root.position.z = 0.25 * sw.slash; // small lunge into the strike
   }
 
   // ---------- sparks and broken parts ----------
@@ -355,7 +355,7 @@ export function createScene1(ctx) {
   const say = (who, text) => ui.say(who, text, tl);
 
   async function strike() {
-    if (jack) jack.setBladeGlow(true);
+    if (gathenModel) gathenModel.setBladeGlow(true);
     audio.charge();
     await tl.tween(0.9, (k) => { sw.raise = k; }, easeInOut);
     await tl.wait(0.5);
@@ -364,7 +364,7 @@ export function createScene1(ctx) {
       sw.slash = k;
       if (!hit && k > 0.55) { hit = true; onHit(); }
     }, easeIn);
-    if (jack) jack.setBladeGlow(false);
+    if (gathenModel) gathenModel.setBladeGlow(false);
     await tl.tween(0.8, (k) => { sw.raise = 1 - k; sw.slash = 1 - k; }, easeOut);
   }
 
@@ -441,7 +441,7 @@ export function createScene1(ctx) {
     if (onEnd) onEnd();
   }
 
-  function start() { jackReady.then(run); }
+  function start() { gathenReady.then(run); }
 
   function dispose() {
     alive = false;
