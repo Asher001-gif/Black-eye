@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Timeline, lerp, easeIn, easeOut, easeInOut } from '../core/timeline.js';
+import { loadJack, poseMix, poseAdd } from '../characters/jack.js';
 
 // ---- Characters (edit names, colours and voices here) ----
 const GATHEN = { name: 'Gathen', color: '#ffd23f', voice: { pitch: 0.5, rate: 0.85 } };
@@ -202,37 +203,50 @@ export function createScene1(ctx) {
   collar.rotation.x = Math.PI / 2;
   const robotParts = [rPelvis, rTorso, rHead, rArmL, rArmR, rLegL, rLegR, collar];
 
-  // ---------- Gathen (placeholder model) ----------
+  // ---------- Gathen (Jack model, posed bone by bone) ----------
   const gathen = new THREE.Group();
   gathen.position.set(1.45, STAGE_Y, -0.5);
-  gathen.rotation.y = -Math.PI / 2; // faces the robot
+  gathen.rotation.y = -Math.PI / 2 - 0.3; // faces the robot
   scene.add(gathen);
-  const dark = new THREE.MeshLambertMaterial({ color: 0x1a1d26 });
-  const gold = new THREE.MeshLambertMaterial({ color: 0xd9a81e });
-  const skin = new THREE.MeshLambertMaterial({ color: 0xc88f66 });
-  function gpart(geo, mat, x, y, z, parent) {
-    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); (parent || gathen).add(m); return m;
+  let jack = null;
+  let GRIP = {};
+  const jackReady = loadJack({ height: 2.0 })
+    .then((j) => { jack = j; GRIP = j.GRIP; gathen.add(j.root); })
+    .catch((err) => console.error('Could not load Jack (Gathen)', err));
+
+  // Poses in degrees, see src/characters/jack.js for the axes
+  const IDLE = {
+    Head: [-4, 0, 0], Spine2: [-3, 0, 0],
+    RightArm: [-12, 0, 0], RightForeArm: [-30, 0, 0],
+    LeftArm: [0, 0, 8]
+  };
+  const RAISE = { // sword up over the shoulder
+    Hips: [0, -8, 0], Spine1: [-8, -18, 0], Spine2: [-8, -18, 0],
+    Head: [-8, 6, 0],
+    RightArm: [-165, 0, 0], RightForeArm: [25, 0, 0],
+    LeftArm: [0, 0, 45], LeftForeArm: [-20, 0, 0]
+  };
+  const SLASH = { // chop forward through the robot
+    Hips: [0, 12, 0], Spine1: [14, 22, 0], Spine2: [10, 20, 0],
+    Head: [14, -10, 0],
+    RightArm: [-70, 0, 0], RightForeArm: [-5, 0, 0],
+    LeftArm: [20, 0, 30]
+  };
+  const sw = { raise: 0, slash: 0 };
+
+  function updateGathen() {
+    if (!jack) return;
+    let p = poseMix(poseMix(IDLE, RAISE, sw.raise), SLASH, sw.slash);
+    p = poseAdd(p, GRIP);
+    p = poseAdd(p, { Spine2: [Math.sin(t * 1.5) * 1.2, 0, 0] });
+    if (gathenLaughing) {
+      const s = Math.sin(t * 14);
+      p = poseAdd(p, { Head: [-22 + s * 5, 0, 0], Spine1: [-6 + s * 2, 0, 0], Spine2: [s * 2.5, 0, 0] });
+      gathen.position.y = STAGE_Y + Math.abs(s) * 0.05;
+    } else gathen.position.y = STAGE_Y;
+    jack.setPose(p);
+    jack.root.position.z = 0.25 * sw.slash; // small lunge into the strike
   }
-  gpart(new THREE.BoxGeometry(0.25, 0.8, 0.28), dark, -0.18, 0.4, 0);
-  gpart(new THREE.BoxGeometry(0.25, 0.8, 0.28), dark, 0.18, 0.4, 0);
-  const gTorso = gpart(new THREE.BoxGeometry(0.75, 0.85, 0.42), dark, 0, 1.22, 0);
-  gpart(new THREE.BoxGeometry(0.2, 0.7, 0.03), gold, 0, 1.22, 0.22);
-  gpart(new THREE.BoxGeometry(0.28, 0.2, 0.46), gold, -0.5, 1.62, 0);
-  gpart(new THREE.BoxGeometry(0.28, 0.2, 0.46), gold, 0.5, 1.62, 0);
-  const gHead = new THREE.Group(); gHead.position.set(0, 1.85, 0); gathen.add(gHead);
-  gpart(new THREE.SphereGeometry(0.22, 12, 10), skin, 0, 0, 0, gHead);
-  gpart(new THREE.BoxGeometry(0.4, 0.1, 0.4), dark, 0, 0.17, -0.02, gHead);
-  gpart(new THREE.BoxGeometry(0.05, 0.04, 0.03), dark, -0.08, 0.03, 0.2, gHead);
-  gpart(new THREE.BoxGeometry(0.05, 0.04, 0.03), dark, 0.08, 0.03, 0.2, gHead);
-  gpart(new THREE.BoxGeometry(0.2, 0.7, 0.2), dark, -0.5, 1.2, 0); // left arm
-  // right arm pivot (swings the blade)
-  const arm = new THREE.Group(); arm.position.set(0.5, 1.6, 0); gathen.add(arm);
-  gpart(new THREE.BoxGeometry(0.16, 0.8, 0.16), dark, 0, -0.4, 0, arm);
-  gpart(new THREE.SphereGeometry(0.1, 8, 6), skin, 0, -0.82, 0, arm);
-  const bladeMat = new THREE.MeshBasicMaterial({ color: 0x3a3a2a });
-  const blade = gpart(new THREE.BoxGeometry(0.07, 1.2, 0.07), bladeMat, 0, -1.45, 0, arm);
-  const ARM_REST = -0.9, ARM_UP = -2.6, ARM_END = -0.35;
-  arm.rotation.x = ARM_REST;
 
   // ---------- sparks and broken parts ----------
   const SP = 140;
@@ -321,11 +335,7 @@ export function createScene1(ctx) {
     bannerMat.opacity = 0.85 + Math.sin(t * 3) * 0.1;
     if (!struck) eyeMat.color.setHex(Math.sin(t * 2) > 0 ? 0xffb000 : 0xcc8800);
     if (!struck) rHead.rotation.x = 0.12 + Math.sin(t * 0.8) * 0.02; // head hangs low
-    gTorso.position.y = 1.22 + Math.sin(t * 1.5) * 0.01;
-    if (gathenLaughing) {
-      gHead.rotation.x = -0.35 + Math.sin(t * 14) * 0.08;
-      gathen.position.y = STAGE_Y + Math.abs(Math.sin(t * 14)) * 0.05;
-    } else { gHead.rotation.x = 0; gathen.position.y = STAGE_Y; }
+    updateGathen();
     if (alert > 0) {
       alert -= dt;
       redLight.intensity = alert > 0 ? (Math.sin(t * 40) > 0 ? 3 : 0.5) : 0;
@@ -345,17 +355,17 @@ export function createScene1(ctx) {
   const say = (who, text) => ui.say(who, text, tl);
 
   async function strike() {
-    bladeMat.color.setHex(0xfff2a0);
+    if (jack) jack.setBladeGlow(true);
     audio.charge();
-    await tl.tween(0.9, (k) => { arm.rotation.x = lerp(ARM_REST, ARM_UP, k); }, easeInOut);
+    await tl.tween(0.9, (k) => { sw.raise = k; }, easeInOut);
     await tl.wait(0.5);
     let hit = false;
     await tl.tween(0.26, (k) => {
-      arm.rotation.x = lerp(ARM_UP, ARM_END, k);
+      sw.slash = k;
       if (!hit && k > 0.55) { hit = true; onHit(); }
     }, easeIn);
-    bladeMat.color.setHex(0x3a3a2a);
-    await tl.tween(0.8, (k) => { arm.rotation.x = lerp(ARM_END, ARM_REST, k); }, easeOut);
+    if (jack) jack.setBladeGlow(false);
+    await tl.tween(0.8, (k) => { sw.raise = 1 - k; sw.slash = 1 - k; }, easeOut);
   }
 
   function onHit() {
@@ -431,7 +441,7 @@ export function createScene1(ctx) {
     if (onEnd) onEnd();
   }
 
-  function start() { run(); }
+  function start() { jackReady.then(run); }
 
   function dispose() {
     alive = false;
